@@ -18,8 +18,8 @@ public class SheetData {
 		return name;
 	}
 	public int getOrientation() {
-//		return orientation;
-		return 1;
+		return orientation;
+//		return 1;
 	}
 	public Log getLog() {
 		return log;

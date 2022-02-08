@@ -65,26 +65,28 @@ public class ExcelToTextFile {
         try (XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(pathToExcel))) {
             File file = new File(createTextPath(pathToExcel));
 
-            getLog().info("in 1>>>>");
+            getLog().debug("in 1>>>>");
             for (Sheet sheet : workbook) {
 
             	int orientation = getSheetOrientation(sheet);
+            	if(orientation==HORISONTAL) {
+            		fileContent.append("HORISONTAL");
+            	}else {
+            		fileContent.append("VERTICAL");
+            	}
             	sheetNames.put(sheet.getSheetName(), new SheetData(sheet.getSheetName(), orientation, getLog()));
-            }
-            getLog().info("in 2>>>>");
-            for (Sheet sheet : workbook) {
-
-            	int orientation = sheetNames.get(sheet.getSheetName()).getOrientation();
-            	
+            	if(true) {
+            		break;
+            	}
+	            getLog().debug("in 2>>>>");
+	
             	if(orientation==HORISONTAL) {
             		appendSheetHorizontalContent(sheet);
             	}else {
             		appendSheetVerticalContent(sheet);
             	}
-            }
-            
-            getLog().info("in 3>>>>");
-            for (Sheet sheet : workbook) {
+	            
+	            getLog().debug("in 3>>>>");
             	SheetData sheetData = sheetNames.get(sheet.getSheetName());
             	
             	fileContent.append("Orientation: ");
@@ -186,7 +188,7 @@ public class ExcelToTextFile {
         int columnSize = -1;
 //        Integer maxColumnSize = -1;
         
-        getLog().info("getSheetName()="+sheet.getSheetName());
+        getLog().debug("getSheetName()="+sheet.getSheetName());
         
         for (Row row : sheet) {
             // For some rows, getLastCellNum returns -1. These rows must be igonred
@@ -217,13 +219,13 @@ public class ExcelToTextFile {
                 }
 
             	if(columns.get(0).indexOf("sector")>-1&&sheet.getSheetName().equalsIgnoreCase("sector")) {
-            		getLog().info("columns="+columns);
+            		getLog().debug("columns="+columns);
             	}
             	sheetTableLocal.add(columns);
             }
         }
         
-//        getLog().info("sheetTableLocal.size()="+sheetTableLocal.size());
+//        getLog().debug("sheetTableLocal.size()="+sheetTableLocal.size());
         List[] arrList = sheetTableLocal.toArray(new List[] {});
         String[][] arr = new String[arrList.length][];
         Integer[] maxLengths = new Integer[sheetTableLocal.size()];
@@ -232,7 +234,7 @@ public class ExcelToTextFile {
         	arr[i] = strArr;
         	Integer maxLength = arr[i].length;
         	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-        		log.info("maxLength="+maxLength);
+        		getLog().debug("maxLength="+maxLength);
         	}
         	if(maxLengths[i]==null) {
         		maxLengths[i] = maxLength;
@@ -253,11 +255,11 @@ public class ExcelToTextFile {
         	for(int j=0; j<arr.length; j++) {
         		if(arr[j].length>i) {
 //                	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-//	        			log.info("i="+i);
-//	        			log.info("j="+j);
-//	        			log.info("arr[j].length="+arr[j].length);
-//	        			log.info("arr.length-i-1="+(arr.length-i-1));
-//	        			log.info("arrNew[i].length="+arrNew[i].length);
+//	        			getLog().debug("i="+i);
+//	        			getLog().debug("j="+j);
+//	        			getLog().debug("arr[j].length="+arr[j].length);
+//	        			getLog().debug("arr.length-i-1="+(arr.length-i-1));
+//	        			getLog().debug("arrNew[i].length="+arrNew[i].length);
 //                	}
         			String value = arr[j][i];
         			arrNew[i][j] = value;
@@ -269,20 +271,26 @@ public class ExcelToTextFile {
         for(int i=0;i<arrNew.length;i++) {
         	List<String> list = Arrays.asList(arrNew[i]);
         	List<String> listNew = list.stream().filter(x->!x.isEmpty()).collect(Collectors.toList());
-        	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-        		log.info(list.toString());
-        	}
+
+        	getLog().debug(list.toString());
         	if(listNew.size()>0) {
         		sheetTableLocal2.add(list);
         	}
         }
-//        getLog().info("sheetTableLocal2.size()="+sheetTableLocal2.size());
+//        getLog().debug("sheetTableLocal2.size()="+sheetTableLocal2.size());
         sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
     }
 
     private int getSheetOrientation(Sheet sheet) {
         Integer columnIndex = -1;
         Integer rowIndex = -1;
+        
+        int lockedCountHor = -1;
+        int lockedCountVert = -1;
+
+        getLog().info("");
+        getLog().info("sheetName="+sheet.getSheetName());
+        getLog().info("");
 
         for (Row row : sheet) {
             // For some rows, getLastCellNum returns -1. These rows must be igonred
@@ -292,22 +300,32 @@ public class ExcelToTextFile {
             	rowIndex++;
                 for (Cell cell : row) {
                 	columnIndex++;
-//                	getLog().info("rowIndex="+rowIndex);
-//                	getLog().info("columnIndex="+columnIndex);
-                	if(columnIndex>2&&rowIndex!=0) {
-                		if(cell.getCellStyle().getLocked()) {
-                			getLog().info("Returning HORISONTAL");
-                			return HORISONTAL;
+                	boolean locked = cell.getCellStyle().getLocked();
+                	
+//                	if(locked) {
+////	                	getLog().info("locked="+locked);
+//	                	getLog().info("rowIndex="+rowIndex);
+//	                	getLog().info("columnIndex="+columnIndex);
+//                	}
+                	if(rowIndex==0) {
+                		if(locked) {
+                    		lockedCountHor++;
                 		}
                 	}
-                	if(rowIndex>2&&columnIndex!=0) {
-                		if(cell.getCellStyle().getLocked()) {
-                			getLog().info("Returning VERTICAL");
-                			return VERTICAL;
+                	if(columnIndex==0) {
+                		if(locked) {
+                    		lockedCountVert++;
                 		}
                 	}
                 }
             }
+        }
+        if(lockedCountHor==columnIndex) {
+			getLog().info("Returning VERTICAL");
+			return VERTICAL;
+        }else if(lockedCountVert==rowIndex) {
+			getLog().info("Returning HORISONTAL");
+			return HORISONTAL;
         }
         return HORISONTAL;
     }
