@@ -97,11 +97,11 @@ public class ExcelToTextFile {
 //                }else {
 //                	alignment = allignVertically(sheetData.getName());
 //                }
-                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
+//                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
                 	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
-                }else {
-                	writeToFileVertically(sheetData.getName(), fileContent, alignment);
-                }
+//                }else {
+//                	writeToFileVertically(sheetData.getName(), fileContent, alignment);
+//                }
                 
                 fileContent.append(System.lineSeparator());
             }
