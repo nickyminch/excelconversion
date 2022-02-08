@@ -59,7 +59,7 @@ public class ExcelToTextFile {
     }
 
     private void convertExcelToTextFile(String pathToExcel) {
-    	getLog().info(pathToExcel);
+    	getLog().debug(pathToExcel);
         StringBuilder fileContent = new StringBuilder();
         Map<String, SheetData> sheetNames = new HashMap<>();
         try (XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(pathToExcel))) {
@@ -69,15 +69,13 @@ public class ExcelToTextFile {
             for (Sheet sheet : workbook) {
 
             	int orientation = getSheetOrientation(sheet);
-            	if(orientation==HORISONTAL) {
-            		fileContent.append("HORISONTAL");
-            	}else {
-            		fileContent.append("VERTICAL");
-            	}
+//            	if(orientation==HORISONTAL) {
+//            		fileContent.append("HORISONTAL");
+//            	}else {
+//            		fileContent.append("VERTICAL");
+//            	}
             	sheetNames.put(sheet.getSheetName(), new SheetData(sheet.getSheetName(), orientation, getLog()));
-            	if(true) {
-            		break;
-            	}
+
 	            getLog().debug("in 2>>>>");
 	
             	if(orientation==HORISONTAL) {
@@ -89,9 +87,9 @@ public class ExcelToTextFile {
 	            getLog().debug("in 3>>>>");
             	SheetData sheetData = sheetNames.get(sheet.getSheetName());
             	
-            	fileContent.append("Orientation: ");
-            	fileContent.append(sheetData.getOrientation()==0?"HORIZONTAL":"VERTICAL");
-            	fileContent.append("\n");
+//            	fileContent.append("Orientation: ");
+//            	fileContent.append(sheetData.getOrientation()==0?"HORIZONTAL":"VERTICAL");
+//            	fileContent.append("\n");
                 appendSheetName(sheetData.getName(), fileContent);
                 Map<Integer, Integer> alignment = null;
 
@@ -288,9 +286,9 @@ public class ExcelToTextFile {
         int lockedCountHor = -1;
         int lockedCountVert = -1;
 
-        getLog().info("");
-        getLog().info("sheetName="+sheet.getSheetName());
-        getLog().info("");
+        getLog().debug("");
+        getLog().debug("sheetName="+sheet.getSheetName());
+        getLog().debug("");
 
         for (Row row : sheet) {
             // For some rows, getLastCellNum returns -1. These rows must be igonred
@@ -303,9 +301,9 @@ public class ExcelToTextFile {
                 	boolean locked = cell.getCellStyle().getLocked();
                 	
 //                	if(locked) {
-////	                	getLog().info("locked="+locked);
-//	                	getLog().info("rowIndex="+rowIndex);
-//	                	getLog().info("columnIndex="+columnIndex);
+//	                	getLog().debug("locked="+locked);
+//	                	getLog().debug("rowIndex="+rowIndex);
+//	                	getLog().debug("columnIndex="+columnIndex);
 //                	}
                 	if(rowIndex==0) {
                 		if(locked) {
@@ -321,10 +319,10 @@ public class ExcelToTextFile {
             }
         }
         if(lockedCountHor==columnIndex) {
-			getLog().info("Returning VERTICAL");
+			getLog().debug("Returning VERTICAL");
 			return VERTICAL;
         }else if(lockedCountVert==rowIndex) {
-			getLog().info("Returning HORISONTAL");
+			getLog().debug("Returning HORISONTAL");
 			return HORISONTAL;
         }
         return HORISONTAL;
