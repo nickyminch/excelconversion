@@ -189,7 +189,7 @@ public class ExcelToTextFile {
 
         Integer columnIndex = -1;
         Integer rowIndex = -1;
-//        int columnSize = -1;
+        int columnSize = -1;
 //        Integer maxColumnSize = -1;
         
         getLog().info("getSheetName()="+sheet.getSheetName());
@@ -213,9 +213,23 @@ public class ExcelToTextFile {
 
                 	columns.add(cellContent);
                 }
-                if(columns.size()>0) {
-                	sheetTableLocal.add(columns);
+            	if(rowIndex==0) {
+            		columnSize = columns.size();
+            	}
+            	
+                int diff = columnSize-row.getLastCellNum();
+                for(int i=0;i<diff;i++) {
+                	columns.add("");
                 }
+
+//                if(columns.size()>0) {
+                	if(columns.get(0).indexOf("sector")>-1&&sheet.getSheetName().equalsIgnoreCase("sector")) {
+                		getLog().info("columns="+columns);
+                	}
+                	sheetTableLocal.add(columns);
+//                }
+                	
+                	
             }
         }
         
@@ -248,13 +262,13 @@ public class ExcelToTextFile {
         for(int i=0;i<arrNew.length;i++) {
         	for(int j=0; j<arr.length; j++) {
         		if(arr[j].length>i) {
-                	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-	        			log.info("i="+i);
-	        			log.info("j="+j);
-	        			log.info("arr[j].length="+arr[j].length);
-	        			log.info("arr.length-i-1="+(arr.length-i-1));
-	        			log.info("arrNew[i].length="+arrNew[i].length);
-                	}
+//                	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+//	        			log.info("i="+i);
+//	        			log.info("j="+j);
+//	        			log.info("arr[j].length="+arr[j].length);
+//	        			log.info("arr.length-i-1="+(arr.length-i-1));
+//	        			log.info("arrNew[i].length="+arrNew[i].length);
+//                	}
         			String value = arr[j][i];
         			arrNew[i][j] = value;
         		}else {
