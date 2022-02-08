@@ -92,11 +92,11 @@ public class ExcelToTextFile {
             	fileContent.append("\n");
                 appendSheetName(sheetData.getName(), fileContent);
                 Map<Integer, Integer> alignment = null;
-                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
+//                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
                 	alignment = allignHorizontally(sheetData.getName());
-                }else {
-                	alignment = allignVertically(sheetData.getName());
-                }
+//                }else {
+//                	alignment = allignVertically(sheetData.getName());
+//                }
                 if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
                 	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
                 }else {
