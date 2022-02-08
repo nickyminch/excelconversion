@@ -222,14 +222,10 @@ public class ExcelToTextFile {
                 	columns.add("");
                 }
 
-//                if(columns.size()>0) {
-                	if(columns.get(0).indexOf("sector")>-1&&sheet.getSheetName().equalsIgnoreCase("sector")) {
-                		getLog().info("columns="+columns);
-                	}
-                	sheetTableLocal.add(columns);
-//                }
-                	
-                	
+            	if(columns.get(0).indexOf("sector")>-1&&sheet.getSheetName().equalsIgnoreCase("sector")) {
+            		getLog().info("columns="+columns);
+            	}
+            	sheetTableLocal.add(columns);
             }
         }
         
@@ -278,10 +274,13 @@ public class ExcelToTextFile {
         }
         for(int i=0;i<arrNew.length;i++) {
         	List<String> list = Arrays.asList(arrNew[i]);
+        	List<String> listNew = list.stream().filter(x->!x.isEmpty()).collect(Collectors.toList());
         	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
         		log.info(list.toString());
         	}
-        	sheetTableLocal2.add(list);
+        	if(listNew.size()>0) {
+        		sheetTableLocal2.add(list);
+        	}
         }
 //        getLog().info("sheetTableLocal2.size()="+sheetTableLocal2.size());
         sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
