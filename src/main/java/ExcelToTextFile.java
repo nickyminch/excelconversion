@@ -1,13 +1,3 @@
-import org.apache.maven.plugin.logging.Log;
-import org.apache.poi.ss.formula.ConditionalFormattingEvaluator;
-import org.apache.poi.ss.formula.DataValidationEvaluator;
-import org.apache.poi.ss.formula.EvaluationConditionalFormatRule;
-import org.apache.poi.ss.formula.WorkbookEvaluatorProvider;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.usermodel.XSSFColor;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -15,7 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,14 +15,32 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.maven.plugin.logging.Log;
+import org.apache.poi.ss.formula.ConditionalFormattingEvaluator;
+import org.apache.poi.ss.formula.DataValidationEvaluator;
+import org.apache.poi.ss.formula.EvaluationConditionalFormatRule;
+import org.apache.poi.ss.formula.WorkbookEvaluatorProvider;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.ConditionalFormattingRule;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
 public class ExcelToTextFile {
     private static final String SOURCE_EXTENSION = "xlsx";
     private static final String TARGET_EXTENSION = "txt";
     private static final Predicate<String> containsTarget = path -> path.contains("\\target");
     private static final Predicate<String> isExcelFile = path -> path.endsWith("xlsx");
 
-//    private Map<Integer, Map<Integer, Integer>> maxColumnLengths = new HashMap<Integer, Map<Integer, Integer>>();
     private Map<String, List<List<String>>> sheetTable = new HashMap<String, List<List<String>>>();
+    
+    public static final int HORISONTAL = 0;
+    public static final int VERTICAL = 1;
 
     private final Log log;
     private final String searchDirectory;
@@ -51,25 +59,50 @@ public class ExcelToTextFile {
     }
 
     private void convertExcelToTextFile(String pathToExcel) {
+    	getLog().info(pathToExcel);
         StringBuilder fileContent = new StringBuilder();
-        List<String> sheetNames = new ArrayList<String>();
+        Map<String, SheetData> sheetNames = new HashMap<>();
         try (XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(pathToExcel))) {
             File file = new File(createTextPath(pathToExcel));
-            Integer sheetCount = -1; 
+
+            getLog().info("in 1>>>>");
             for (Sheet sheet : workbook) {
-            	sheetCount++;
-            	sheetNames.add(sheet.getSheetName());
-            	Map<Integer, Integer> sheetColLength = new HashMap<Integer, Integer>();
-//                maxColumnLengths.put(sheetCount, sheetColLength);
-                appendSheetContent(sheet, fileContent, sheetColLength);
+
+            	int orientation = getSheetOrientation(sheet);
+            	sheetNames.put(sheet.getSheetName(), new SheetData(sheet.getSheetName(), orientation, getLog()));
+            }
+            getLog().info("in 2>>>>");
+            for (Sheet sheet : workbook) {
+
+            	int orientation = sheetNames.get(sheet.getSheetName()).getOrientation();
+            	
+            	if(orientation==HORISONTAL) {
+            		appendSheetHorizontalContent(sheet);
+            	}else {
+            		appendSheetVerticalContent(sheet);
+            	}
             }
             
-            sheetCount = -1; 
-            for (String sheetName : sheetNames) {
-            	sheetCount++;
-//                maxColumnLengths.get(sheetCount);
-                appendSheetName(sheetName, fileContent);
-                writeToFile(sheetName, fileContent, allign(sheetName));
+            getLog().info("in 3>>>>");
+            for (Sheet sheet : workbook) {
+            	SheetData sheetData = sheetNames.get(sheet.getSheetName());
+            	
+            	fileContent.append("Orientation: ");
+            	fileContent.append(sheetData.getOrientation()==0?"HORIZONTAL":"VERTICAL");
+            	fileContent.append("\n");
+                appendSheetName(sheetData.getName(), fileContent);
+                Map<Integer, Integer> alignment = null;
+                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
+                	alignment = allignHorizontally(sheetData.getName());
+                }else {
+                	alignment = allignVertically(sheetData.getName());
+                }
+                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
+                	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
+                }else {
+                	writeToFileVertically(sheetData.getName(), fileContent, alignment);
+                }
+                
                 fileContent.append(System.lineSeparator());
             }
             Files.write(file.toPath(), String.valueOf(fileContent).getBytes(StandardCharsets.UTF_8));
@@ -95,15 +128,18 @@ public class ExcelToTextFile {
         fileContent.append("============").append(sheetName).append("========================\n");
     }
 
-    private void appendSheetContent(Sheet sheet, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
+    private void appendSheetHorizontalContent(Sheet sheet) {
         List<List<String>> sheetTableLocal = new LinkedList<>();
         sheetTable.put(sheet.getSheetName(), sheetTableLocal);
+        Map<Integer, Boolean> columnLengths = new HashMap<Integer, Boolean>();
         Integer columnIndex = -1;
         Integer rowIndex = -1;
+        int columnSize = -1;
 
         for (Row row : sheet) {
             // For some rows, getLastCellNum returns -1. These rows must be igonred
             columnIndex = -1;
+            
             if (row.getLastCellNum() > 0) {
                 List<String> columns = new LinkedList<>();
             	rowIndex++;
@@ -111,34 +147,171 @@ public class ExcelToTextFile {
                 for (Cell cell : row) {
                     String cellContent;
                 	columnIndex++;
-
+                	
                     if (!CellType._NONE.equals(cell.getCellType()) && !CellType.BLANK.equals(cell.getCellType())) {
                         cellContent = getCellValueAndCharacteristics(cell, sheet.getWorkbook().getFontAt(cell.getCellStyle().getFontIndexAsInt()));
                     } else {
                         cellContent = "";
                     }
 
-                    columns.add(cellContent);
+                    cellContent = cellContent.trim();
+					if(cellContent.isEmpty()) {
+                    	if(columnIndex>=1) {
+                    		columnLengths.put(rowIndex, Boolean.TRUE);
+                    	}
+                    }
+                    int diff = cell.getColumnIndex()-columns.size();
+                    for(int i=0;i<diff;i++) {
+                    	columns.add("");
+                    }
+
+                   	columns.add(cellContent);
                 }
 
-                sheetTableLocal.add(columns);
-            }else {
-            	if(row.getLastCellNum()==0) {
-            		System.err.println("row.getLastCellNum()="+row.getLastCellNum());
+            	if(rowIndex==0) {
+            		columnSize = columns.size();
             	}
+            	
+                int diff = columnSize-row.getLastCellNum();
+                for(int i=0;i<diff;i++) {
+                	columns.add("");
+                }
+                if(columns.size()>0) {
+                	sheetTableLocal.add(columns);
+                }
             }
         }
     }
-    private Map<Integer, Integer>  allign(String sheetName) {
-    	Map<Integer, Integer> sheetColLengthLocal = new HashMap<Integer, Integer>();
-    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+    
+    private void appendSheetVerticalContent(Sheet sheet) {
+        List<List<String>> sheetTableLocal = new LinkedList<>();
+        List<List<String>> sheetTableLocal2 = new LinkedList<>();
+
+        Integer columnIndex = -1;
+        Integer rowIndex = -1;
+//        int columnSize = -1;
+//        Integer maxColumnSize = -1;
+        
+        getLog().info("getSheetName()="+sheet.getSheetName());
+        
+        for (Row row : sheet) {
+            // For some rows, getLastCellNum returns -1. These rows must be igonred
+            
+            if (row.getLastCellNum() > 0) {
+            	rowIndex++;
+            	List<String> columns = new LinkedList<>();
+
+                for (Cell cell : row) {
+                    String cellContent = null;
+                    columnIndex++;
+                	
+                    if (!CellType._NONE.equals(cell.getCellType()) && !CellType.BLANK.equals(cell.getCellType())) {
+                        cellContent = getCellValueAndCharacteristics(cell, sheet.getWorkbook().getFontAt(cell.getCellStyle().getFontIndexAsInt()));
+                    } else {
+                        cellContent = "";
+                    }
+
+                	columns.add(cellContent);
+                }
+                if(columns.size()>0) {
+                	sheetTableLocal.add(columns);
+                }
+            }
+        }
+        
+//        getLog().info("sheetTableLocal.size()="+sheetTableLocal.size());
+        List[] arrList = sheetTableLocal.toArray(new List[] {});
+        String[][] arr = new String[arrList.length][];
+        Integer[] maxLengths = new Integer[sheetTableLocal.size()];
+        for(int i=0;i<arrList.length;i++) {
+        	String[] strArr = (String[])arrList[i].toArray(new String[] {});
+        	arr[i] = strArr;
+        	Integer maxLength = arr[i].length;
+        	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+        		log.info("maxLength="+maxLength);
+        	}
+        	if(maxLengths[i]==null) {
+        		maxLengths[i] = maxLength;
+        	}else {
+        		maxLengths[i] = Math.max(maxLengths[i], maxLength);
+        	}
+        }
+        
+    	String[][] arrNew = null;
+        for(int i=0;i<arr.length;i++) {
+        	arrNew = new String[maxLengths[i]][];
+        	for(int j=0; j<arr[i].length; j++) {
+        		arrNew[j] = new String[arr.length];
+        	}
+        }
+        
+        for(int i=0;i<arrNew.length;i++) {
+        	for(int j=0; j<arr.length; j++) {
+        		if(arr[j].length>i) {
+                	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+	        			log.info("i="+i);
+	        			log.info("j="+j);
+	        			log.info("arr[j].length="+arr[j].length);
+	        			log.info("arr.length-i-1="+(arr.length-i-1));
+	        			log.info("arrNew[i].length="+arrNew[i].length);
+                	}
+        			String value = arr[j][i];
+        			arrNew[i][j] = value;
+        		}else {
+        			arrNew[i][j] = "";
+        		}
+        	}
+        }
+        for(int i=0;i<arrNew.length;i++) {
+        	List<String> list = Arrays.asList(arrNew[i]);
+        	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+        		log.info(list.toString());
+        	}
+        	sheetTableLocal2.add(list);
+        }
+//        getLog().info("sheetTableLocal2.size()="+sheetTableLocal2.size());
+        sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
+    }
+
+    private int getSheetOrientation(Sheet sheet) {
         Integer columnIndex = -1;
         Integer rowIndex = -1;
 
-        rowIndex = -1;
+        for (Row row : sheet) {
+            // For some rows, getLastCellNum returns -1. These rows must be igonred
+            columnIndex = -1;
+            
+            if (row.getLastCellNum() > 0) {
+            	rowIndex++;
+                for (Cell cell : row) {
+                	columnIndex++;
+//                	getLog().info("rowIndex="+rowIndex);
+//                	getLog().info("columnIndex="+columnIndex);
+                	if(columnIndex>2&&rowIndex!=0) {
+                		if(cell.getCellStyle().getLocked()) {
+                			getLog().info("Returning HORISONTAL");
+                			return HORISONTAL;
+                		}
+                	}
+                	if(rowIndex>2&&columnIndex!=0) {
+                		if(cell.getCellStyle().getLocked()) {
+                			getLog().info("Returning VERTICAL");
+                			return VERTICAL;
+                		}
+                	}
+                }
+            }
+        }
+        return HORISONTAL;
+    }
+
+    private Map<Integer, Integer>  allignHorizontally(String sheetName) {
+    	Map<Integer, Integer> sheetColLengthLocal = new HashMap<Integer, Integer>();
+    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+        Integer columnIndex = -1;
+
         for (List<String> row : sheetTableLocal) {
             ListIterator<String> colIterator = row.listIterator();
-        	rowIndex++;
             columnIndex=-1;
 
             while (colIterator.hasNext()) {
@@ -156,43 +329,103 @@ public class ExcelToTextFile {
         }
         return sheetColLengthLocal;
     }
-    
-    private void writeToFile(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
+
+    private Map<Integer, Integer>  allignVertically(String sheetName) {
+    	Map<Integer, Integer> sheetColLengthLocal = new HashMap<Integer, Integer>();
+    	log.info(sheetName);
+    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+        Integer rowIndex = -1;
+        Integer colIndex = -1;
+
+//        getLog().info("allignVertically -> sheetTableLocal.size()="+sheetTableLocal.size());
+        for (List<String> row : sheetTableLocal) {
+            ListIterator<String> colIterator = row.listIterator();
+            rowIndex++;
+//            getLog().info("row.size()="+row.size());
+
+            while (colIterator.hasNext()) {
+            	colIndex++;
+
+            	String value = colIterator.next();
+            	Integer cellLength  = new Integer(0);
+//            	if(value!=null) {
+            		cellLength = value.length();
+//            	}
+                
+                Integer oldLength = sheetColLengthLocal.get(colIndex);
+                if(oldLength==null) {
+                	oldLength = 0;
+                }
+                cellLength = Math.max(cellLength, oldLength);
+                sheetColLengthLocal.put(colIndex, cellLength);
+            }
+        }
+        getLog().info("sheetColLengthLocal.keySet().size()="+sheetColLengthLocal.keySet().size());
+        return sheetColLengthLocal;
+    }
+
+    private void writeToFileHorizontally(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
     	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
         Integer columnIndex = -1;
-        Integer rowIndex = -1;
-
+        
         Integer lastRowLength = 0;
         lastRowLength = 0;
         for (List<String> row : sheetTableLocal) {
             ListIterator<String> colIterator = row.listIterator();
             columnIndex=-1;
-        	rowIndex++;
-        	if(rowIndex==8) {
-//        		System.err.println(">>>>");
-        	}
-
+            
             while (colIterator.hasNext()) {
                 columnIndex++;
 
-               	
-
-//                System.err.println("rowIndex="+rowIndex);
-//                System.err.println("columnIndex="+columnIndex);
                 String cellContent = colIterator.next();
-
+                
            		lastRowLength = sheetColLength.get(columnIndex);
 
-//                System.err.println("cellContent="+cellContent);
-//                System.err.println("lastRowLength="+lastRowLength);
                 String formatString = "%-" + lastRowLength + "s";
-                String formattedCellContent = String.format(formatString, cellContent);
-
-                fileContent.append(formattedCellContent);
-                fileContent.append(" | ");
+                if(lastRowLength>0) {
+	                String formattedCellContent = String.format(formatString, cellContent);
+	
+	                fileContent.append(formattedCellContent);
+	                fileContent.append(" | ");
+                }
             }
 
-            fileContent.append(System.lineSeparator());
+           	fileContent.append(System.lineSeparator());
+        }
+    }
+
+    private void writeToFileVertically(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
+    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+        Integer columnIndex = -1;
+        
+        Integer lastRowLength = 0;
+        lastRowLength = 0;
+        getLog().info("sheetTableLocal.size()="+sheetTableLocal.size());
+        for (List<String> row : sheetTableLocal) {
+            ListIterator<String> colIterator = row.listIterator();
+            columnIndex=-1;
+            getLog().info("row.size()="+row.size());
+            
+            while (colIterator.hasNext()) {
+                columnIndex++;
+
+                String cellContent = colIterator.next();
+                if(cellContent==null) {
+                	lastRowLength=0;
+                }else {
+                	lastRowLength = sheetColLength.get(columnIndex);
+                }
+
+                String formatString = "%-" + lastRowLength + "s";
+                if(lastRowLength>0) {
+	                String formattedCellContent = String.format(formatString, cellContent);
+	
+	                fileContent.append(formattedCellContent);
+	                fileContent.append(" | ");
+                }
+            }
+
+           	fileContent.append(System.lineSeparator());
         }
     }
 
@@ -259,7 +492,7 @@ public class ExcelToTextFile {
         // (Foreground) Cell Color not set by Conditional Formatting
         XSSFColor foreColor = (XSSFColor) cell.getCellStyle().getFillForegroundColorColor();
         if (foreColor != null) {
-            fileContent.append("#").append(foreColor.getARGBHex()).append(" ");
+            fileContent.append(" ").append("#").append(foreColor.getARGBHex()).append(" ");
         }
 
         // (Background) Cell Color set by Conditional Formatting
@@ -270,11 +503,11 @@ public class ExcelToTextFile {
             ConditionalFormattingRule cFRule = evalCFRule.getRule();
             if (cFRule.getPatternFormatting() != null) {
                 XSSFColor backColor = (XSSFColor) cFRule.getPatternFormatting().getFillBackgroundColorColor();
-                fileContent.append("#").append(backColor.getARGBHex()).append(" ");
+                fileContent.append(" ").append("#").append(backColor.getARGBHex()).append(" ");
             } else if (cFRule.getColorScaleFormatting() != null) {
                 XSSFColor[] colors = (XSSFColor[]) cFRule.getColorScaleFormatting().getColors();
                 for (XSSFColor color : colors) {
-                    fileContent.append("#").append(color.getARGBHex()).append(" ");
+                    fileContent.append(" ").append("#").append(color.getARGBHex()).append(" ");
                 }
             }
         }
@@ -327,5 +560,60 @@ public class ExcelToTextFile {
             warning.append(" can't be opened. This excel file may be damaged !");
         }
         return warning.toString();
+    }
+
+	public Log getLog() {
+		return log;
+	}
+	
+    private String[][] swapArray(String array[][], boolean clockwise) {
+        int arrayRowCount = getArrayRowCount(array);
+        int arrayColumnCount = getArrayColumnCount(array);
+        String newArray[][] = new String[arrayColumnCount][arrayRowCount];
+        for(int i=0;i<arrayRowCount;i++)
+        {
+            for(int j=0;j<arrayColumnCount;j++)
+            {
+                if(clockwise)
+                {
+                    // Swap in clockwise direction.
+                    newArray[j][arrayRowCount-i-1] = array[i][j];
+                }else
+                {
+                    // Swap in anti-clockwise direction.
+                    newArray[j][i] = array[i][j];
+                }
+            }
+        }
+        // Return swapped array.
+        return newArray;
+    }
+    /* Get array row count. */
+    private int getArrayRowCount(String array[][])
+    {
+        int ret = 0;
+        if(array != null)
+        {
+            ret = array.length;
+        }
+        return ret;
+    }
+    /* Get the biggest columns count in the array. */
+    private int getArrayColumnCount(String array[][])
+    {
+        int ret = 0;
+        if(array != null)
+        {
+            int rowCount = array.length;
+            for(int i=0;i<rowCount;i++)
+            {
+                String row[] = array[i];
+                if(row.length > ret)
+                {
+                    ret = row.length;
+                }
+            }
+        }
+        return ret;
     }
 }
