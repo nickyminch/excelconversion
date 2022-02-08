@@ -8,7 +8,7 @@ public class SheetData {
 		super();
 		this.name = name;
 		this.log = log;
-		getLog().info("orientation="+orientation);
+		getLog().debug("orientation="+orientation);
 		this.orientation = orientation;
 		if(orientation!=ExcelToTextFile.HORISONTAL && orientation!=ExcelToTextFile.VERTICAL) {
 			throw new RuntimeException("Unknown sheet orientation");

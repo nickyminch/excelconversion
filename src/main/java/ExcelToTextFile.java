@@ -83,6 +83,8 @@ public class ExcelToTextFile {
             	}else {
             		appendSheetVerticalContent(sheet);
             	}
+            	
+            	removeEmptyColumnsOrRows(sheet);
 	            
 	            getLog().debug("in 3>>>>");
             	SheetData sheetData = sheetNames.get(sheet.getSheetName());
@@ -268,12 +270,9 @@ public class ExcelToTextFile {
         }
         for(int i=0;i<arrNew.length;i++) {
         	List<String> list = Arrays.asList(arrNew[i]);
-        	List<String> listNew = list.stream().filter(x->!x.isEmpty()).collect(Collectors.toList());
 
         	getLog().debug(list.toString());
-        	if(listNew.size()>0) {
-        		sheetTableLocal2.add(list);
-        	}
+       		sheetTableLocal2.add(list);
         }
 //        getLog().debug("sheetTableLocal2.size()="+sheetTableLocal2.size());
         sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
@@ -518,5 +517,19 @@ public class ExcelToTextFile {
 
 	public Log getLog() {
 		return log;
+	}
+	
+	private void removeEmptyColumnsOrRows(Sheet sheet) {
+        List<List<String>> sheetTableLocal2 = new LinkedList<>();
+        String sheetName = sheet.getSheetName();
+        List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+        for(List<String> list: sheetTableLocal) {
+        	List<String> listNew = list.stream().filter(x->!x.trim().isEmpty()).collect(Collectors.toList());
+        	if(listNew.size()>0) {
+       			getLog().debug("listNew="+listNew);
+        		sheetTableLocal2.add(list);
+        	}
+        }
+        sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
 	}
 }
