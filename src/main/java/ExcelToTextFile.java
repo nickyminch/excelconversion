@@ -82,6 +82,7 @@ public class ExcelToTextFile {
             		appendSheetHorizontalContent(sheet);
             	}else {
             		appendSheetVerticalContent(sheet);
+            		swapArrays(sheet);
             	}
             	
             	removeEmptyColumnsOrRows(sheet);
@@ -225,57 +226,7 @@ public class ExcelToTextFile {
             }
         }
         
-//        getLog().debug("sheetTableLocal.size()="+sheetTableLocal.size());
-        List[] arrList = sheetTableLocal.toArray(new List[] {});
-        String[][] arr = new String[arrList.length][];
-        Integer[] maxLengths = new Integer[sheetTableLocal.size()];
-        for(int i=0;i<arrList.length;i++) {
-        	String[] strArr = (String[])arrList[i].toArray(new String[] {});
-        	arr[i] = strArr;
-        	Integer maxLength = arr[i].length;
-        	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-        		getLog().debug("maxLength="+maxLength);
-        	}
-        	if(maxLengths[i]==null) {
-        		maxLengths[i] = maxLength;
-        	}else {
-        		maxLengths[i] = Math.max(maxLengths[i], maxLength);
-        	}
-        }
-        
-    	String[][] arrNew = null;
-        for(int i=0;i<arr.length;i++) {
-        	arrNew = new String[maxLengths[i]][];
-        	for(int j=0; j<arr[i].length; j++) {
-        		arrNew[j] = new String[arr.length];
-        	}
-        }
-        
-        for(int i=0;i<arrNew.length;i++) {
-        	for(int j=0; j<arr.length; j++) {
-        		if(arr[j].length>i) {
-//                	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
-//	        			getLog().debug("i="+i);
-//	        			getLog().debug("j="+j);
-//	        			getLog().debug("arr[j].length="+arr[j].length);
-//	        			getLog().debug("arr.length-i-1="+(arr.length-i-1));
-//	        			getLog().debug("arrNew[i].length="+arrNew[i].length);
-//                	}
-        			String value = arr[j][i];
-        			arrNew[i][j] = value;
-        		}else {
-        			arrNew[i][j] = "";
-        		}
-        	}
-        }
-        for(int i=0;i<arrNew.length;i++) {
-        	List<String> list = Arrays.asList(arrNew[i]);
-
-        	getLog().debug(list.toString());
-       		sheetTableLocal2.add(list);
-        }
-//        getLog().debug("sheetTableLocal2.size()="+sheetTableLocal2.size());
-        sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
+        sheetTable.put(sheet.getSheetName(), sheetTableLocal);
     }
 
     private int getSheetOrientation(Sheet sheet) {
@@ -531,5 +482,63 @@ public class ExcelToTextFile {
         	}
         }
         sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
+	}
+	
+	private void swapArrays(Sheet sheet) {
+		String sheetName = sheet.getSheetName();
+    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
+    	List<List<String>> sheetTableLocal2 = new LinkedList<>();
+
+//      getLog().debug("sheetTableLocal.size()="+sheetTableLocal.size());
+      List[] arrList = sheetTableLocal.toArray(new List[] {});
+      String[][] arr = new String[arrList.length][];
+      Integer[] maxLengths = new Integer[sheetTableLocal.size()];
+      for(int i=0;i<arrList.length;i++) {
+      	String[] strArr = (String[])arrList[i].toArray(new String[] {});
+      	arr[i] = strArr;
+      	Integer maxLength = arr[i].length;
+      	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+      		getLog().debug("maxLength="+maxLength);
+      	}
+      	if(maxLengths[i]==null) {
+      		maxLengths[i] = maxLength;
+      	}else {
+      		maxLengths[i] = Math.max(maxLengths[i], maxLength);
+      	}
+      }
+      
+  	String[][] arrNew = null;
+      for(int i=0;i<arr.length;i++) {
+      	arrNew = new String[maxLengths[i]][];
+      	for(int j=0; j<arr[i].length; j++) {
+      		arrNew[j] = new String[arr.length];
+      	}
+      }
+      
+      for(int i=0;i<arrNew.length;i++) {
+      	for(int j=0; j<arr.length; j++) {
+      		if(arr[j].length>i) {
+//              	if(sheet.getSheetName().equalsIgnoreCase("sector")) {
+//	        			getLog().debug("i="+i);
+//	        			getLog().debug("j="+j);
+//	        			getLog().debug("arr[j].length="+arr[j].length);
+//	        			getLog().debug("arr.length-i-1="+(arr.length-i-1));
+//	        			getLog().debug("arrNew[i].length="+arrNew[i].length);
+//              	}
+      			String value = arr[j][i];
+      			arrNew[i][j] = value;
+      		}else {
+      			arrNew[i][j] = "";
+      		}
+      	}
+      }
+      for(int i=0;i<arrNew.length;i++) {
+      	List<String> list = Arrays.asList(arrNew[i]);
+
+      	getLog().debug(list.toString());
+     		sheetTableLocal2.add(list);
+      }
+//      getLog().debug("sheetTableLocal2.size()="+sheetTableLocal2.size());
+      sheetTable.put(sheet.getSheetName(), sheetTableLocal2);
 	}
 }
