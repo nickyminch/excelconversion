@@ -92,16 +92,10 @@ public class ExcelToTextFile {
             	fileContent.append("\n");
                 appendSheetName(sheetData.getName(), fileContent);
                 Map<Integer, Integer> alignment = null;
-//                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
-                	alignment = allignHorizontally(sheetData.getName());
-//                }else {
-//                	alignment = allignVertically(sheetData.getName());
-//                }
-//                if(sheetData.getOrientation()==ExcelToTextFile.HORISONTAL) {
-                	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
-//                }else {
-//                	writeToFileVertically(sheetData.getName(), fileContent, alignment);
-//                }
+
+                alignment = allignHorizontally(sheetData.getName());
+
+               	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
                 
                 fileContent.append(System.lineSeparator());
             }
@@ -343,40 +337,6 @@ public class ExcelToTextFile {
         return sheetColLengthLocal;
     }
 
-    private Map<Integer, Integer>  allignVertically(String sheetName) {
-    	Map<Integer, Integer> sheetColLengthLocal = new HashMap<Integer, Integer>();
-    	log.info(sheetName);
-    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
-        Integer rowIndex = -1;
-        Integer colIndex = -1;
-
-//        getLog().info("allignVertically -> sheetTableLocal.size()="+sheetTableLocal.size());
-        for (List<String> row : sheetTableLocal) {
-            ListIterator<String> colIterator = row.listIterator();
-            rowIndex++;
-//            getLog().info("row.size()="+row.size());
-
-            while (colIterator.hasNext()) {
-            	colIndex++;
-
-            	String value = colIterator.next();
-            	Integer cellLength  = new Integer(0);
-//            	if(value!=null) {
-            		cellLength = value.length();
-//            	}
-                
-                Integer oldLength = sheetColLengthLocal.get(colIndex);
-                if(oldLength==null) {
-                	oldLength = 0;
-                }
-                cellLength = Math.max(cellLength, oldLength);
-                sheetColLengthLocal.put(colIndex, cellLength);
-            }
-        }
-        getLog().info("sheetColLengthLocal.keySet().size()="+sheetColLengthLocal.keySet().size());
-        return sheetColLengthLocal;
-    }
-
     private void writeToFileHorizontally(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
     	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
         Integer columnIndex = -1;
@@ -393,41 +353,6 @@ public class ExcelToTextFile {
                 String cellContent = colIterator.next();
                 
            		lastRowLength = sheetColLength.get(columnIndex);
-
-                String formatString = "%-" + lastRowLength + "s";
-                if(lastRowLength>0) {
-	                String formattedCellContent = String.format(formatString, cellContent);
-	
-	                fileContent.append(formattedCellContent);
-	                fileContent.append(" | ");
-                }
-            }
-
-           	fileContent.append(System.lineSeparator());
-        }
-    }
-
-    private void writeToFileVertically(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
-    	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
-        Integer columnIndex = -1;
-        
-        Integer lastRowLength = 0;
-        lastRowLength = 0;
-        getLog().info("sheetTableLocal.size()="+sheetTableLocal.size());
-        for (List<String> row : sheetTableLocal) {
-            ListIterator<String> colIterator = row.listIterator();
-            columnIndex=-1;
-            getLog().info("row.size()="+row.size());
-            
-            while (colIterator.hasNext()) {
-                columnIndex++;
-
-                String cellContent = colIterator.next();
-                if(cellContent==null) {
-                	lastRowLength=0;
-                }else {
-                	lastRowLength = sheetColLength.get(columnIndex);
-                }
 
                 String formatString = "%-" + lastRowLength + "s";
                 if(lastRowLength>0) {
@@ -578,55 +503,4 @@ public class ExcelToTextFile {
 	public Log getLog() {
 		return log;
 	}
-	
-    private String[][] swapArray(String array[][], boolean clockwise) {
-        int arrayRowCount = getArrayRowCount(array);
-        int arrayColumnCount = getArrayColumnCount(array);
-        String newArray[][] = new String[arrayColumnCount][arrayRowCount];
-        for(int i=0;i<arrayRowCount;i++)
-        {
-            for(int j=0;j<arrayColumnCount;j++)
-            {
-                if(clockwise)
-                {
-                    // Swap in clockwise direction.
-                    newArray[j][arrayRowCount-i-1] = array[i][j];
-                }else
-                {
-                    // Swap in anti-clockwise direction.
-                    newArray[j][i] = array[i][j];
-                }
-            }
-        }
-        // Return swapped array.
-        return newArray;
-    }
-    /* Get array row count. */
-    private int getArrayRowCount(String array[][])
-    {
-        int ret = 0;
-        if(array != null)
-        {
-            ret = array.length;
-        }
-        return ret;
-    }
-    /* Get the biggest columns count in the array. */
-    private int getArrayColumnCount(String array[][])
-    {
-        int ret = 0;
-        if(array != null)
-        {
-            int rowCount = array.length;
-            for(int i=0;i<rowCount;i++)
-            {
-                String row[] = array[i];
-                if(row.length > ret)
-                {
-                    ret = row.length;
-                }
-            }
-        }
-        return ret;
-    }
 }
