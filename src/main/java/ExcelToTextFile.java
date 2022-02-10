@@ -78,10 +78,8 @@ public class ExcelToTextFile {
     private void processSheet(Sheet sheet, int orientation, StringBuilder fileContent) {
         getLog().debug("in 2>>>>");
     	
-		appendSheetHorizontalContent(sheet);
-    	if(orientation==HORISONTAL) {
-    	}else {
-//    		appendSheetVerticalContent(sheet);
+		appendSheetContent(sheet);
+    	if(orientation==VERTICAL) {
     		swapArrays(sheet);
     	}
     	
@@ -92,9 +90,9 @@ public class ExcelToTextFile {
         appendSheetName(sheet.getSheetName(), fileContent);
         Map<Integer, Integer> alignment = null;
 
-        alignment = allignHorizontally(sheet.getSheetName());
+        alignment = allign(sheet.getSheetName());
 
-       	writeToFileHorizontally(sheet.getSheetName(), fileContent, alignment);
+       	writeToFile(sheet.getSheetName(), fileContent, alignment);
         
     }
 
@@ -115,7 +113,7 @@ public class ExcelToTextFile {
         fileContent.append("============").append(sheetName).append("========================\n");
     }
 
-    private void appendSheetHorizontalContent(Sheet sheet) {
+    private void appendSheetContent(Sheet sheet) {
         List<List<String>> sheetTableLocal = new LinkedList<>();
         sheetTable.put(sheet.getSheetName(), sheetTableLocal);
         Map<Integer, Boolean> columnLengths = new HashMap<Integer, Boolean>();
@@ -214,7 +212,7 @@ public class ExcelToTextFile {
         return HORISONTAL;
     }
 
-    private Map<Integer, Integer>  allignHorizontally(String sheetName) {
+    private Map<Integer, Integer>  allign(String sheetName) {
     	Map<Integer, Integer> sheetColLengthLocal = new HashMap<Integer, Integer>();
     	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
         Integer columnIndex = -1;
@@ -239,7 +237,7 @@ public class ExcelToTextFile {
         return sheetColLengthLocal;
     }
 
-    private void writeToFileHorizontally(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
+    private void writeToFile(String sheetName, StringBuilder fileContent, Map<Integer, Integer> sheetColLength) {
     	List<List<String>> sheetTableLocal = sheetTable.get(sheetName);
         Integer columnIndex = -1;
         
