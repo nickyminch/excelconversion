@@ -61,51 +61,41 @@ public class ExcelToTextFile {
     private void convertExcelToTextFile(String pathToExcel) {
     	getLog().debug(pathToExcel);
         StringBuilder fileContent = new StringBuilder();
-        Map<String, SheetData> sheetNames = new HashMap<>();
+
         try (XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream(pathToExcel))) {
             File file = new File(createTextPath(pathToExcel));
-
-            getLog().debug("in 1>>>>");
             for (Sheet sheet : workbook) {
-
             	int orientation = getSheetOrientation(sheet);
-//            	if(orientation==HORISONTAL) {
-//            		fileContent.append("HORISONTAL");
-//            	}else {
-//            		fileContent.append("VERTICAL");
-//            	}
-            	sheetNames.put(sheet.getSheetName(), new SheetData(sheet.getSheetName(), orientation, getLog()));
-
-	            getLog().debug("in 2>>>>");
-	
-            	if(orientation==HORISONTAL) {
-            		appendSheetHorizontalContent(sheet);
-            	}else {
-            		appendSheetVerticalContent(sheet);
-            		swapArrays(sheet);
-            	}
-            	
-            	removeEmptyColumnsOrRows(sheet);
-	            
-	            getLog().debug("in 3>>>>");
-            	SheetData sheetData = sheetNames.get(sheet.getSheetName());
-            	
-//            	fileContent.append("Orientation: ");
-//            	fileContent.append(sheetData.getOrientation()==0?"HORIZONTAL":"VERTICAL");
-//            	fileContent.append("\n");
-                appendSheetName(sheetData.getName(), fileContent);
-                Map<Integer, Integer> alignment = null;
-
-                alignment = allignHorizontally(sheetData.getName());
-
-               	writeToFileHorizontally(sheetData.getName(), fileContent, alignment);
-                
+            	processSheet(sheet, orientation, fileContent);
                 fileContent.append(System.lineSeparator());
             }
             Files.write(file.toPath(), String.valueOf(fileContent).getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             log.error(printFileEmptyOrDamagedMessage(pathToExcel), e);
         }
+    }
+    
+    private void processSheet(Sheet sheet, int orientation, StringBuilder fileContent) {
+        getLog().debug("in 2>>>>");
+    	
+		appendSheetHorizontalContent(sheet);
+    	if(orientation==HORISONTAL) {
+    	}else {
+//    		appendSheetVerticalContent(sheet);
+    		swapArrays(sheet);
+    	}
+    	
+    	removeEmptyColumnsOrRows(sheet);
+        
+        getLog().debug("in 3>>>>");
+    	
+        appendSheetName(sheet.getSheetName(), fileContent);
+        Map<Integer, Integer> alignment = null;
+
+        alignment = allignHorizontally(sheet.getSheetName());
+
+       	writeToFileHorizontally(sheet.getSheetName(), fileContent, alignment);
+        
     }
 
     private String createTextPath(String fileName) {
@@ -180,53 +170,6 @@ public class ExcelToTextFile {
         }
     }
     
-    private void appendSheetVerticalContent(Sheet sheet) {
-        List<List<String>> sheetTableLocal = new LinkedList<>();
-
-        Integer columnIndex = -1;
-        Integer rowIndex = -1;
-        int columnSize = -1;
-        
-        getLog().debug("getSheetName()="+sheet.getSheetName());
-        
-        for (Row row : sheet) {
-            // For some rows, getLastCellNum returns -1. These rows must be igonred
-            
-            if (row.getLastCellNum() > 0) {
-            	rowIndex++;
-            	List<String> columns = new LinkedList<>();
-
-                for (Cell cell : row) {
-                    String cellContent = null;
-                    columnIndex++;
-                	
-                    if (!CellType._NONE.equals(cell.getCellType()) && !CellType.BLANK.equals(cell.getCellType())) {
-                        cellContent = getCellValueAndCharacteristics(cell, sheet.getWorkbook().getFontAt(cell.getCellStyle().getFontIndexAsInt()));
-                    } else {
-                        cellContent = "";
-                    }
-
-                	columns.add(cellContent);
-                }
-            	if(rowIndex==0) {
-            		columnSize = columns.size();
-            	}
-            	
-                int diff = columnSize-row.getLastCellNum();
-                for(int i=0;i<diff;i++) {
-                	columns.add("");
-                }
-
-            	if(columns.get(0).indexOf("sector")>-1&&sheet.getSheetName().equalsIgnoreCase("sector")) {
-            		getLog().debug("columns="+columns);
-            	}
-            	sheetTableLocal.add(columns);
-            }
-        }
-        
-        sheetTable.put(sheet.getSheetName(), sheetTableLocal);
-    }
-
     private int getSheetOrientation(Sheet sheet) {
         Integer columnIndex = -1;
         Integer rowIndex = -1;
